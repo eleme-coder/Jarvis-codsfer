@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>J.A.R.V.I.S.</title>
+<style>
+:root{--bg:#02080e;--ink:#d8f4ff;--mut:#6fa6bd;--acc:#3fd0ff;--hot:#ff8a3d;--line:#3fd0ff44;color-scheme:dark;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:radial-gradient(ellipse at 50% 38%,#073049 0,#02080e 62%);color:var(--ink);font-family:"Segoe UI",system-ui,Arial,sans-serif;overflow:hidden}
+body::before{content:"";position:fixed;inset:0;background:repeating-linear-gradient(0deg,#3fd0ff08 0 1px,transparent 1px 4px);pointer-events:none}
+main{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:14px 16px 16px;max-width:760px;margin:0 auto}
+.hud{width:100%;display:flex;justify-content:space-between;font-size:.72rem;letter-spacing:.25em;color:var(--mut);text-transform:uppercase}
+.hud b{color:var(--acc);font-weight:400}
+#clock{font-size:2.6rem;font-weight:100;letter-spacing:.12em;text-align:center;line-height:1}
+#date{text-align:center;color:var(--mut);letter-spacing:.2em;font-size:.75rem;text-transform:uppercase;margin-top:6px}
+#orb{position:relative;width:min(64vw,300px);aspect-ratio:1;border:0;background:none;cursor:pointer;padding:0;color:inherit}
+#orb svg{width:100%;height:100%;overflow:visible}
+.r1{transform-origin:150px 150px;animation:spin 24s linear infinite}
+.r2{transform-origin:150px 150px;animation:spin 14s linear infinite reverse}
+.r3{transform-origin:150px 150px;animation:spin 40s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.core{transform-origin:150px 150px;animation:beat 3.2s ease-in-out infinite;filter:drop-shadow(0 0 14px var(--acc))}
+@keyframes beat{50%{transform:scale(1.07)}}
+#orb.listen .core{fill:var(--hot);animation-duration:.7s;filter:drop-shadow(0 0 22px var(--hot))}
+#orb.listen .ring{stroke:var(--hot)}
+#orb.speak .core{animation-duration:.45s}
+#orb .lbl{position:absolute;inset:auto 0 -4px;text-align:center;font-size:.7rem;letter-spacing:.3em;color:var(--mut);text-transform:uppercase}
+.txt{width:100%;text-align:center;min-height:110px}
+#heard{color:var(--mut);font-size:.85rem;letter-spacing:.06em;min-height:1.3em}
+#sub{font-size:1.15rem;line-height:1.45;margin-top:8px;font-weight:300;text-shadow:0 0 10px #3fd0ff55}
+#now{display:none;margin:10px auto 0;border:1px solid var(--acc);color:var(--acc);padding:9px 16px;text-decoration:none;letter-spacing:.14em;font-size:.8rem;text-transform:uppercase;clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
+.bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:100%}
+.chip{background:#3fd0ff12;border:1px solid var(--line);color:var(--acc);padding:9px 14px;font:inherit;font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;text-decoration:none;clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)}
+.chip:hover{background:#3fd0ff26}
+#typed{display:none;width:100%;gap:8px}
+#typed.on{display:flex}
+#typed input{flex:1;background:transparent;border:0;border-bottom:1px solid var(--acc);color:var(--ink);font:inherit;padding:8px 2px;outline:none}
+</style></head>
+<body><main>
+<div class="hud"><span>J.A.R.V.I.S. <b>● en línea</b></span><span id="mode">modo voz</span></div>
+<div><div id="clock">--:--</div><div id="date"></div></div>
+
+<button id="orb" aria-label="Toca para hablar con JARVIS">
+<svg viewBox="0 0 300 300" fill="none">
+<g class="r3"><circle class="ring" cx="150" cy="150" r="146" stroke="#3fd0ff" stroke-opacity=".35" stroke-width="1" stroke-dasharray="2 8"/></g>
+<g class="r1"><circle class="ring" cx="150" cy="150" r="124" stroke="#3fd0ff" stroke-width="2" stroke-dasharray="70 22 12 22"/></g>
+<g class="r2"><circle class="ring" cx="150" cy="150" r="100" stroke="#3fd0ff" stroke-opacity=".7" stroke-width="1.5" stroke-dasharray="4 10"/></g>
+<circle class="ring" cx="150" cy="150" r="74" stroke="#3fd0ff" stroke-opacity=".5"/>
+<circle class="core" cx="150" cy="150" r="46" fill="#3fd0ff" fill-opacity=".85"/>
+<circle cx="150" cy="150" r="20" fill="#eaffff"/>
+</svg>
+<span class="lbl" id="lbl">toca para hablar</span>
+</button>
+
+<div class="txt">
+<div id="heard"></div>
+<div id="sub">Toca "Iniciar" para despertar a JARVIS.</div>
+<a id="now" target="_blank" rel="noopener"></a>
+</div>
+
+<div class="bar">
+<button class="chip" id="start">Iniciar</button>
+<a class="chip" id="wx" target="_blank" rel="noopener">Clima</a>
+<button class="chip" id="mute">Voz: on</button>
+<button class="chip" id="kb">Teclado</button>
+</div>
+<div id="typed"><input id="msg" placeholder="escribe una orden…" aria-label="Orden"><button class="chip" id="send">Enviar</button></div>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+const CITY="León, Guanajuato";
+let voice=true,hist=[],busy=false;
+const ytUrl=q=>"https://www.youtube.com/results?search_query="+encodeURIComponent(q);
+$("#wx").href="https://www.google.com/search?q="+encodeURIComponent("clima "+CITY);
+
+function tick(){const d=new Date();
+$("#clock").textContent=d.toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"});
+$("#date").textContent=d.toLocaleDateString("es-MX",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}
+tick();setInterval(tick,15000);
+const saludo=()=>{const h=new Date().getHours();return h<12?"Buenos días":h<19?"Buenas tardes":"Buenas noches"};
+
+function state(s,l){$("#orb").className=s||"";$("#lbl").textContent=l||"toca para hablar"}
+function say(t){$("#sub").textContent=t;if(!voice)return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="es-MX";
+const v=speechSynthesis.getVoices().find(v=>v.lang&&v.lang.startsWith("es"));if(v)u.voice=v;
+u.onstart=()=>state("speak","hablando");u.onend=u.onerror=()=>state();speechSynthesis.speak(u)}catch(e){}}
+
+function playMusic(q){
+const url=ytUrl(q);const n=$("#now");n.href=url;n.textContent="▶ Abrir: "+q;n.style.display="inline-block";
+let w=null;try{w=window.open(url,"_blank","noopener")}catch(e){}
+return w?"Abriendo "+q+", señorita.":"Listo, señorita. Si su navegador bloqueó la ventana, toque el botón de abajo para abrir "+q+"."}
+
+function localCommand(t){
+const m=t.match(/^(?:jarvis[,\s]*)?(?:por favor[,\s]*)?(?:pon(?:me|er)?|pone|reproduce|toca|ponle)\s+(?:la\s+canci[oó]n\s+|canci[oó]n\s+|m[uú]sica\s+de\s+|algo\s+de\s+|el\s+disco\s+)?(.+)/i);
+if(m)return playMusic(m[1].replace(/[.!?]+$/,""));
+if(/\bclima\b|qu[eé] tiempo hace|va a llover/i.test(t)){window.open($("#wx").href,"_blank","noopener");return "Abriendo el clima de "+CITY+", señorita."}
+if(/qu[eé] hora es|dime la hora/i.test(t))return "Son las "+new Date().toLocaleTimeString("es-MX",{hour:"numeric",minute:"2-digit"})+", señorita.";
+return null}
+
+async function handle(text){
+if(!text||busy)return;$("#heard").textContent="“"+text+"”";
+const loc=localCommand(text);if(loc){say(loc);return}
+busy=true;state("speak","pensando");hist.push({role:"user",content:text});
+try{
+const res=await fetch("/.netlify/functions/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messages:hist.slice(-12)})});
+const data=await res.json().catch(()=>({}));
+if(!res.ok||!data.reply){hist.pop();say(res.status===429?"Llegué al límite gratuito de la IA por ahora, señorita. Intente en unos minutos.":"Hubo un problema con la conexión. Intente de nuevo.")}
+else{hist.push({role:"assistant",content:data.reply});say(data.reply)}
+}catch(e){hist.pop();say("No pude conectarme, señorita. Revise su internet.")}
+busy=false;if(!speechSynthesis.speaking)state()}
+
+$("#start").onclick=()=>{
+const hora=new Date().toLocaleTimeString("es-MX",{hour:"numeric",minute:"2-digit"});
+const fecha=new Date().toLocaleDateString("es-MX",{weekday:"long",day:"numeric",month:"long"});
+say(saludo()+", señorita. Son las "+hora+" de este "+fecha+". Toque el círculo y dígame qué necesita; por ejemplo: pon Back in Black.")};
+
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+$("#orb").onclick=()=>{
+if(!SR){$("#typed").classList.add("on");$("#sub").textContent="Tu navegador no permite voz aquí. Escribe tu orden abajo.";return}
+try{speechSynthesis.cancel();const r=new SR();r.lang="es-MX";r.interimResults=true;
+r.onstart=()=>state("listen","escuchando");
+r.onresult=e=>{const x=e.results[e.results.length-1];$("#heard").textContent="“"+x[0].transcript+"”";if(x.isFinal)handle(x[0].transcript.trim())};
+r.onerror=()=>{state();say("No pude escucharla, señorita. Intente de nuevo.")};
+r.onend=()=>{if(!busy&&!speechSynthesis.speaking)state()};r.start()}catch(e){state()}};
+
+$("#mute").onclick=()=>{voice=!voice;$("#mute").textContent="Voz: "+(voice?"on":"off");if(!voice)try{speechSynthesis.cancel()}catch(e){}};
+$("#kb").onclick=()=>{$("#typed").classList.toggle("on");$("#msg").focus()};
+$("#send").onclick=()=>{const v=$("#msg").value.trim();$("#msg").value="";handle(v)};
+$("#msg").onkeydown=e=>{if(e.key==="Enter")$("#send").click()};
+</script></body></html>
